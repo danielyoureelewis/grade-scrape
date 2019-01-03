@@ -113,15 +113,11 @@ def score_by_total(soup):
     return score
 
 
-def main():
-    course, students, labs = read_config()
-
-    # open our gradebook file
+def create_backup():
     outfile = open('gradebook.csv', mode='r')
     backup = open('backup.csv', mode='w')
     bak_writer = csv.writer(
         backup, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
     first = True
     old_data = {}
     for row in outfile:
@@ -131,6 +127,26 @@ def main():
             old_data[row[0]] = row
         first = False
     backup.close()
+    outfile.close()
+    return old_data
+
+
+def check_old_scores(cNum, old_data, lab_scores):
+    # need to check for higher score already in file and write the highest
+    if old_data:
+        for i in range(1, len(old_data[cNum])-1):
+            if old_data[cNum][i] > lab_scores[i]:
+                lab_scores[i] = old_data[i]
+    return lab_scores
+
+
+def main():
+    course, students, labs = read_config()
+
+    # open our gradebook file
+    old_data = create_backup()
+
+    # for some reason truncate doesn't work? this will have to suffice
     outfile = open('gradebook.csv', mode='w')
     gb_writer = csv.writer(
         outfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -163,11 +179,7 @@ def main():
                 score = score_by_total(soup)
             # append the score for the lab
             lab_scores.append(str(float(score)*penalty))
-        # need to check for higher score already in file and write the highest
-        if old_data:
-            for i in range(1, len(old_data[cNum])-1):
-                if old_data[cNum][i] > lab_scores[i]:
-                    lab_scores[i] = old_data[i]
+        lab_scores = check_old_scores(cNum, old_data, lab_scores)
         gb_writer.writerow(lab_scores)
     outfile.close()
 
